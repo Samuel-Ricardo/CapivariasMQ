@@ -1,37 +1,27 @@
-defmodule EventManager do
-  # alias ExUnit.EventManager
-
-  use GenServer
+defmodule Capivariasmq.EventManager do
+  alias Capivariasmq.EventManager.TopicQueue
+  use DynamicSupervisor
 
   def start_link(_) do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+    DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
-  def init(state), do: {:ok, state}
+  def init(:ok), do: DynamicSupervisor.init(strategy: :one_for_one)
 
-  def create_topic(topic) do
-    GenServer.call(__MODULE__, {:create_topic, topic})
+  def start_topic(topic) do
+    spec = {TopicQueue, topic}
+    {:ok, pid} = DynamicSupervisor.start_child(__MODULE__, spec)
+    Registry.register(Registry.TopicRegistry, topic, pid)
   end
 
   def enqueue_event(topic, event) do
-    GenServer.call(__MODULE__, {:enqueue_event, topic, event})
+    case Registry.lookup(Registry.TopicRegistry, topic) do
+      [{pid, _}] -> GenServer.cast(pid, {:enqueue, event})
+      [] -> {:error, :topic_not_found}
+    end
   end
 
   def dequeue_event(topic) do
     GenServer.call(__MODULE__, {:dequeue_event, topic})
-  end
-
-  def handle_call({:create_topic, topic}, _from, state) do
-    {:reply, :ok, Map.put(state, topic, [])}
-  end
-
-  def handle_call({:enqueue_event, topic, event}, _from, state) do
-    queue = Map.get(state, topic, [])
-
-    {:reply, :ok, Map.put(state, topic, queue ++ [event])}
-  end
-
-  def handle_call({:dequeue_event, topic}, _from, state) do
-    {:reply, Map.get(state, topic, []), state}
   end
 end
