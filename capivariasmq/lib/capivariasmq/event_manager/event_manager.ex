@@ -27,6 +27,7 @@ defmodule EventManager do
 
   def handle_call({:enqueue_event, topic, event}, _from, state) do
     queue = Map.get(state, topic, [])
+
     {:reply, :ok, Map.put(state, topic, queue ++ [event])}
   end
 
