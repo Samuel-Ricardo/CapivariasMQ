@@ -20,4 +20,17 @@ defmodule EventManager do
   def dequeue_event(topic) do
     GenServer.call(__MODULE__, {:dequeue_event, topic})
   end
+
+  def handle_call({:create_topic, topic}, _from, state) do
+    {:reply, :ok, Map.put(state, topic, [])}
+  end
+
+  def handle_call({:enqueue_event, topic, event}, _from, state) do
+    queue = Map.get(state, topic, [])
+    {:reply, :ok, Map.put(state, topic, queue ++ [event])}
+  end
+
+  def handle_call({:dequeue_event, topic}, _from, state) do
+    {:reply, Map.get(state, topic, []), state}
+  end
 end
